@@ -1,8 +1,6 @@
-import java.io.IOException;
-import java.nio.CharBuffer;
+import java.lang.reflect.Array;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Map;
 
 public class TaskBagImplementation extends UnicastRemoteObject
         implements TaskBag
@@ -12,18 +10,43 @@ public class TaskBagImplementation extends UnicastRemoteObject
     }
 
     @Override
-    public void pairOut(Map<String, String> pair) {
+    public void pairOut(String key, int[] array) {
+        tasks.put(key,array);
+    }
+
+    @Override
+    public void paiOut(String key, int value) {
+        results.put(key,value);
+    }
+
+    @Override
+    public int[] pairIn(String key) {
+        if (tasks.get(key) == null){
+            return tasks.get(key);
+        }
+        else return tasks.get(key);
+    }
+
+    @Override
+    public int[] readPair(String key) {
+        return tasks.get(key);
+    }
+
+    @Override
+    public void sendNotification() {
 
     }
 
     @Override
-    public String pairIn(String key) {
-        return "";
+    public void updateWorkerState(String key, Boolean value) {
+        workerState.put(key,value);
     }
 
     @Override
-    public String readPair(String key) {
-        return "";
+    public void updateWork(String key) {
+        int[] array = tasks.get(key);
+        tasks.remove(key);
+        tasks.put(key,array);
     }
 
 }
