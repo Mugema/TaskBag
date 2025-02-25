@@ -1,14 +1,15 @@
 import java.rmi.Naming;
+import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.Scanner;
 
 public class MasterWorker {
     static TaskBag stub=null;
+    String[] taskNames;
 
     public static void createStub()  {
-        stub = null;
         try {
-            stub = (TaskBag) Naming.lookup("rmi://localhost:999"+"/TB");
+            stub = (TaskBag) Naming.lookup("rmi://localhost:1899"+"/TB");
         }catch (Exception e){
             System.out.println(e);
         }
@@ -18,10 +19,14 @@ public class MasterWorker {
         if (stub==null){
             System.out.println("The stub was never initialized");
         }
-        else stub.pairOut(key,arraySlice);
+        else try {
+            stub.pairOut(key,arraySlice);
+        } catch (java.rmi.RemoteException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-    public void updateWork(String key){
+    public void updateWork(String key) throws RemoteException {
         stub.updateWork(key);
     }
 
@@ -46,34 +51,57 @@ public class MasterWorker {
         return Arrays.copyOfRange(arr,start,end);
     }
 
-    public static void main (String[] arg){
-        MasterWorker.createStub();
-        MasterWorker masterWorker = new MasterWorker();
-        int[] array = masterWorker.getArray();
-        String[] keys;
-        int range=0;
-
-        if(array.length%3==0) {
-            keys = new String[array.length / 3];
-            range = array.length / 3;
+    public void generateTaskNames(int limit){
+        for(int i=0;i<limit;i++){
+            taskNames[i]="Master"+i;
         }
-        else keys = new String[(array.length/3)+1]; range = array.length/3;
+    }
 
+    public void masterCore(int[] array, MasterWorker masterWorker) throws RemoteException {
+        int numberOfSubArrays;
 
-        if (array.length<=3) addWork("Next",array);
+        if(array.length%3==0) numberOfSubArrays = array.length / 3;
+        else numberOfSubArrays = (array.length / 3) + 1;
 
-        else if(array.length >= 6){
-            for(int i =0; i<range; i=i+3){
-                if (range-i<3){
-                    addWork("Master"+i, masterWorker.sliceArray(array,i,range-i) );
-                }
-                else addWork("Master"+i, masterWorker.sliceArray(array,i,i+3) );
+        masterWorker.taskNames= new String[numberOfSubArrays];
+        masterWorker.generateTaskNames(numberOfSubArrays);
+
+        if (array.length<=3)  addWork("Next", array);
+        else {
+            for(int i =0; i<numberOfSubArrays; i+=1){
+                if (array.length-i*3<3) addWork(masterWorker.taskNames[i], masterWorker.sliceArray(array,i*3,array.length) );
+                else addWork("Master"+i, masterWorker.sliceArray(array,i*3,(i*3)+3) );
+                if (i==0) masterWorker.taskNames[i]="Master"+i;
             }
         }
 
-        if(true){
-            int currentJob=0;
-            masterWorker.updateWork(keys[currentJob]);
+        for(int i=0;i<numberOfSubArrays;i++){
+            if(stub.needWork()) masterWorker.updateWork(masterWorker.taskNames[i]);
+
+        }
+
+    }
+
+    public static void main (String[] arg) throws RemoteException {
+        MasterWorker.createStub();
+        MasterWorker masterWorker = new MasterWorker();
+        int[] array = masterWorker.getArray();
+
+        masterWorker.masterCore(array,masterWorker);
+
+        if (stub.returnResults().isEmpty())
+            masterWorker.masterCore(array,masterWorker);
+        else if (stub.returnResults().size()==1)
+            System.out.println("The max number in the array is :"+stub.returnResults().get("result"));
+        else if (stub.returnResults().size()>1){
+            int count =stub.returnResults().size();
+            Object[] object= stub.returnResults().values().toArray();
+            int[] aray=new int[count];
+
+            for (int i=0;i<count;i++){
+                aray[i]= (int) object[i];
+            }
+            masterWorker.masterCore(aray,masterWorker);
         }
 
     }

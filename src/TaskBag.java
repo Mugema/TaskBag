@@ -1,7 +1,5 @@
-import java.lang.reflect.Array;
 import java.rmi.*;
 import java.util.Hashtable;
-import java.util.Map;
 
 public interface TaskBag extends Remote {
 
@@ -11,9 +9,10 @@ public interface TaskBag extends Remote {
 
     /**causes a Pair (key, value) to be added to the Task Bag. The client
       process continues immediately */
-    void pairOut(String key, int[] array);
+    void pairOut(String key, int[] array) throws RemoteException;
 
-    void paiOut(String key, int value);
+    void paiOut(String key, int value) throws RemoteException;
+
 
     /**
      * causes some Pair in the Task Bag that matches key to be withdrawn
@@ -21,18 +20,23 @@ public interface TaskBag extends Remote {
      * process continues. If no matching Pair is available, the client waits
      * until one is and then proceeds as before
      */
-    int[]  pairIn(String key);
+    int[]  pairIn(String key) throws RemoteException;
 
     /**
      is the same as pairIn(key) except that the Pair remains in the
      Task Bag
      */
-    int[] readPair(String key);
+    int[] readPair(String key) throws RemoteException;
 
-    void sendNotification();
+    void sendNotification() throws RemoteException;
 
-    void updateWorkerState(String key,Boolean value);
+    void updateWorkerState(String key,Boolean value) throws RemoteException;
 
-    void updateWork(String key);
+    void updateWork(String key) throws RemoteException;
+
+    boolean needWork() throws RemoteException;
+
+    Hashtable<String, Integer> returnResults() throws RemoteException;
+
 
 }
