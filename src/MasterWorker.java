@@ -48,6 +48,7 @@ public class MasterWorker {
     }
 
     public int[] sliceArray(int[] arr,int start, int end){
+        System.out.println(Arrays.toString(Arrays.copyOfRange(arr, start, end)));
         return Arrays.copyOfRange(arr,start,end);
     }
 
@@ -74,10 +75,12 @@ public class MasterWorker {
                 if (i==0) masterWorker.taskNames[i]="Master"+i;
             }
         }
-
         for(int i=0;i<numberOfSubArrays;i++){
-            if(stub.needWork()) masterWorker.updateWork(masterWorker.taskNames[i]);
-
+            if(stub.needWork()) {
+                masterWorker.updateWork(masterWorker.taskNames[i]);
+                System.out.println("NeedWork");
+                System.out.println(stub.returnResults());
+            }
         }
 
     }
@@ -91,17 +94,22 @@ public class MasterWorker {
 
         if (stub.returnResults().isEmpty())
             masterWorker.masterCore(array,masterWorker);
-        else if (stub.returnResults().size()==1)
-            System.out.println("The max number in the array is :"+stub.returnResults().get("result"));
-        else if (stub.returnResults().size()>1){
-            int count =stub.returnResults().size();
-            Object[] object= stub.returnResults().values().toArray();
-            int[] aray=new int[count];
 
-            for (int i=0;i<count;i++){
-                aray[i]= (int) object[i];
+        while(true){
+            if (stub.returnResults().size()==1 && !stub.needWork()) {
+                System.out.println("The max number in the array is :" + stub.returnResults().get("result"));
+                break;
             }
-            masterWorker.masterCore(aray,masterWorker);
+            else if (stub.returnResults().size()>1){
+                int count =stub.returnResults().size();
+                Object[] object= stub.returnResults().values().toArray();
+                int[] aray=new int[count];
+
+                for (int i=0;i<count;i++){
+                    aray[i]= (int) object[i];
+                }
+                masterWorker.masterCore(aray,masterWorker);
+            }
         }
 
     }

@@ -11,7 +11,7 @@ public interface TaskBag extends Remote {
       process continues immediately */
     void pairOut(String key, int[] array) throws RemoteException;
 
-    void paiOut(String key, int value) throws RemoteException;
+    void pairOut(String key, int value) throws RemoteException;
 
 
     /**
@@ -20,7 +20,7 @@ public interface TaskBag extends Remote {
      * process continues. If no matching Pair is available, the client waits
      * until one is and then proceeds as before
      */
-    int[]  pairIn(String key) throws RemoteException;
+    int[]  pairIn() throws RemoteException;
 
     /**
      is the same as pairIn(key) except that the Pair remains in the
@@ -36,7 +36,7 @@ public interface TaskBag extends Remote {
 
     boolean needWork() throws RemoteException;
 
-    Hashtable<String, Integer> returnResults() throws RemoteException;
+    Hashtable<String, int[]> returnResults() throws RemoteException;
 
 
 }

@@ -13,57 +13,58 @@ public class TaskBagImplementation extends UnicastRemoteObject
     }
 
     @Override
-    public void pairOut(String key, int[] array) throws RemoteException {
+    public synchronized void pairOut(String key, int[] array) throws RemoteException {
         tasks.put(key,array);
     }
 
     @Override
-    public void paiOut(String key, int value) throws RemoteException {
+    public synchronized void pairOut(String key, int value) throws RemoteException {
         results.put(key,value);
     }
 
     @Override
-    public int[] pairIn(String key) {
-        if (tasks.get(key) == null){
+    public synchronized int[] pairIn() {
+        if (tasks.get("Next") == null){
             return null;
         }
         else  {
-            tasks.remove(key);
+            int[] result = tasks.get("Next");
+            tasks.remove("Next");
             needWorkValue = true;
-            return tasks.get(key);
+            return result;
         }
     }
 
     @Override
-    public int[] readPair(String key) {
+    public synchronized int[] readPair(String key) {
         return tasks.get(key);
     }
 
     @Override
-    public void sendNotification() {
+    public synchronized void sendNotification() {
 
     }
 
     @Override
-    public void updateWorkerState(String key, Boolean value) {
+    public synchronized void updateWorkerState(String key, Boolean value) {
         workerState.put(key,value);
     }
 
     @Override
-    public void updateWork(String key) {
+    public synchronized void updateWork(String key) {
         int[] array = tasks.get(key);
         tasks.remove(key);
         tasks.put("Next",array);
         needWorkValue = false;
     }
 
-    public boolean needWork(){
+    public synchronized boolean needWork(){
         return needWorkValue;
     }
 
     @Override
-    public Hashtable<String, Integer> returnResults() throws RemoteException {
-        return results;
+    public Hashtable<String, int[]> returnResults() throws RemoteException {
+        return tasks;
     }
 
 
