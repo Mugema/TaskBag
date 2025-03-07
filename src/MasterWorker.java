@@ -3,15 +3,34 @@ import java.rmi.RemoteException;
 import java.util.Arrays;
 import java.util.Scanner;
 
-public class MasterWorker {
+public class MasterWorker implements Subscriber{
     static TaskBag stub=null;
-    String[] taskNames;
+
+
+    @Override
+    public void update() throws RemoteException {
+        if (stub.returnResults().size()==1) {
+            System.out.println("The max number in the array is :" + Arrays.toString(stub.returnResults().get("result")));
+            stub.unSubscribe(SubsciberTypes.MasterWorker,this);
+        }
+        else if (stub.returnResults().size()>1){
+            int count =stub.returnResults().size();
+            Object[] object= stub.returnResults().values().toArray();
+            int[] resultsArray =new int[count];
+
+            for (int i=0;i<count;i++){
+                resultsArray[i]= (int) object[i];
+            }
+            masterCore(resultsArray,this);
+        }
+        stub.workerNotification(SubsciberTypes.Worker);
+    }
 
     public static void createStub()  {
         try {
             stub = (TaskBag) Naming.lookup("rmi://localhost:1899"+"/TB");
         }catch (Exception e){
-            System.out.println(e);
+            System.out.println("Error occurred whilst creating the stub:"+e);
         }
     }
 
@@ -24,10 +43,6 @@ public class MasterWorker {
         } catch (java.rmi.RemoteException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public void updateWork(String key) throws RemoteException {
-        stub.updateWork(key);
     }
 
     public int[] getArray(){
@@ -52,65 +67,36 @@ public class MasterWorker {
         return Arrays.copyOfRange(arr,start,end);
     }
 
-    public void generateTaskNames(int limit){
-        for(int i=0;i<limit;i++){
-            taskNames[i]="Master"+i;
-        }
-    }
-
     public void masterCore(int[] array, MasterWorker masterWorker) throws RemoteException {
         int numberOfSubArrays;
 
-        if(array.length%3==0) numberOfSubArrays = array.length / 3;
-        else numberOfSubArrays = (array.length / 3) + 1;
-
-        masterWorker.taskNames= new String[numberOfSubArrays];
-        masterWorker.generateTaskNames(numberOfSubArrays);
+        if(array.length%3==0)
+            numberOfSubArrays = array.length / 3;
+        else
+            numberOfSubArrays = (array.length / 3) + 1;
 
         if (array.length<=3)  addWork("Next", array);
         else {
             for(int i =0; i<numberOfSubArrays; i+=1){
-                if (array.length-i*3<3) addWork(masterWorker.taskNames[i], masterWorker.sliceArray(array,i*3,array.length) );
-                else addWork("Master"+i, masterWorker.sliceArray(array,i*3,(i*3)+3) );
-                if (i==0) masterWorker.taskNames[i]="Master"+i;
+                if (i==0)
+                    addWork("Next", masterWorker.sliceArray(array,0,array.length) );
+                else if (array.length-i*3<3)
+                    addWork("Task"+i, masterWorker.sliceArray(array,i*3,array.length) );
+                else
+                    addWork("Master"+i, masterWorker.sliceArray(array,i*3,(i*3)+3) );
             }
         }
-        for(int i=0;i<numberOfSubArrays;i++){
-            if(stub.needWork()) {
-                masterWorker.updateWork(masterWorker.taskNames[i]);
-                System.out.println("NeedWork");
-                System.out.println(stub.returnResults());
-            }
-        }
-
     }
 
     public static void main (String[] arg) throws RemoteException {
         MasterWorker.createStub();
         MasterWorker masterWorker = new MasterWorker();
+
+        stub.subscribe(SubsciberTypes.MasterWorker,masterWorker);
+
         int[] array = masterWorker.getArray();
-
         masterWorker.masterCore(array,masterWorker);
-
-        if (stub.returnResults().isEmpty())
-            masterWorker.masterCore(array,masterWorker);
-
-        while(true){
-            if (stub.returnResults().size()==1 && !stub.needWork()) {
-                System.out.println("The max number in the array is :" + stub.returnResults().get("result"));
-                break;
-            }
-            else if (stub.returnResults().size()>1){
-                int count =stub.returnResults().size();
-                Object[] object= stub.returnResults().values().toArray();
-                int[] aray=new int[count];
-
-                for (int i=0;i<count;i++){
-                    aray[i]= (int) object[i];
-                }
-                masterWorker.masterCore(aray,masterWorker);
-            }
-        }
-
+        stub.workerNotification(SubsciberTypes.Worker);
     }
+
 }
