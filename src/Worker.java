@@ -1,14 +1,19 @@
+import java.io.Serializable;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
 
-public class Worker implements Subscriber{
+public class Worker extends UnicastRemoteObject implements Subscriber, Serializable {
     static TaskBag stub;
     String workerName;
 
 
     Worker() throws RemoteException {
+        super();
+        createStub();
         getWorkerName();
+
     }
     public static void createStub(){
         try {
@@ -18,8 +23,8 @@ public class Worker implements Subscriber{
         }
     }
 
-    public synchronized void getWorkerName() throws RemoteException {
-        int workerNumber = stub.subscribe(SubsciberTypes.Worker,this);
+    public void getWorkerName() throws RemoteException {
+        int workerNumber = stub.subscribe(SubscriberTypes.Worker,this);
         workerName="Worker"+workerNumber;
     }
 
@@ -31,36 +36,35 @@ public class Worker implements Subscriber{
         return max;
     }
 
-    public synchronized void doWork() throws RemoteException {
+    public void doWork() throws RemoteException, InterruptedException {
         int[] array=stub.pairIn();
+        System.out.println("Doing Work:"+ Arrays.toString(array));
 
         stub.updateWork();
         System.out.println(Arrays.toString(array));
         int max =  maxNumberInArray(array);
 
-
         try {
             stub.addToResults(workerName,max);
         } catch (java.rmi.RemoteException e) {
-            throw new RuntimeException(e);
+            System.out.println("Error---" +e );
         }
+        System.out.println("maxNumber is:"+max);
 
     }
 
     @Override
-    public void update() throws RemoteException {
-        stub.unSubscribe(SubsciberTypes.Worker,this);
+    public synchronized void  update() throws RemoteException, InterruptedException {
+        stub.unSubscribe(SubscriberTypes.Worker,this);
         doWork();
-        stub.subscribe(SubsciberTypes.Worker,this);
+        stub.subscribe(SubscriberTypes.Worker,this);
     }
 
 
-    public static void main( String [] arg) throws RemoteException {
-        Worker.createStub();
+    public static void main( String [] arg) throws RemoteException, InterruptedException {
         Worker worker= new Worker();
 
         System.out.println("Running Worker:"+worker.workerName);
-        worker.update();
 
     }
 

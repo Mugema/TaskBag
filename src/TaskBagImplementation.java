@@ -1,39 +1,66 @@
+import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
 import java.rmi.server.UnicastRemoteObject;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.*;
 
 public class TaskBagImplementation extends UnicastRemoteObject
         implements TaskBag
 {
+    Hashtable<SubscriberTypes,List<Subscriber>> subscribers = new Hashtable<>(){};
 
     TaskBagImplementation() throws RemoteException {
         super();
+        subscribers.put(SubscriberTypes.Worker,new ArrayList<>());
+        subscribers.put(SubscriberTypes.MasterWorker,new ArrayList<>());
     }
+    List<String> taskNames;
+
 
     @Override
-    public int subscribe(SubsciberTypes type,Subscriber sub) throws RemoteException {
+    public int subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
         subscribers.get(type).add(sub);
-        if(type==SubsciberTypes.Worker)
-            return subscribers.get(SubsciberTypes.Worker).size()-1;
+        System.out.println("Adding Subscriber: "+sub.toString());
+        if(type== SubscriberTypes.Worker)
+            return subscribers.get(SubscriberTypes.Worker).size()-1;
         else
             return 0;
     }
 
     @Override
-    public void unSubscribe(SubsciberTypes type,Subscriber sub) throws RemoteException {
+    public void unSubscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
+        System.out.println("Removing Subscriber: "+ sub);
         subscribers.get(type).remove(sub);
     }
 
     @Override
-    public void workerNotification(SubsciberTypes workerType) throws RemoteException {
-        List<Subscriber> sub = subscribers.get(workerType);
-        if (!sub.isEmpty()) sub.getFirst().update();
+    public void workerNotification(SubscriberTypes workerType) throws RemoteException, InterruptedException {
+        while (subscribers.get(workerType).isEmpty())
+        {
+            Thread.sleep(2000L);
+        }
+        List<Subscriber> subscriberList = subscribers.get(workerType);
+
+        try{
+            System.out.println(subscriberList);
+            subscriberList.getFirst().update();
+        } catch (RemoteException e) {
+            subscribers.get(SubscriberTypes.Worker).remove(subscriberList.getFirst());
+        }
+
     }
 
     @Override
-    public void masterWorkerNotification() throws RemoteException {
-        subscribers.get(SubsciberTypes.MasterWorker).getFirst().update();
+    public void masterWorkerNotification() throws RemoteException, InterruptedException {
+        subscribers.get(SubscriberTypes.MasterWorker).getFirst().update();
+    }
+
+    @Override
+    public void newTasks() throws RemoteException {
+        taskNames = new ArrayList<>(List.copyOf(tasks.keySet()));
+        System.out.println("The size of the taskBag is"+tasks.size());
+        System.out.println("The sliced arrays are:"+ Arrays.toString(tasks.values().toArray()));
+        System.out.println("The taskNames are:"+tasks.keys());
     }
 
     @Override
@@ -64,24 +91,44 @@ public class TaskBagImplementation extends UnicastRemoteObject
     }
 
     @Override
-    public synchronized void updateWork() throws RemoteException {
+    public synchronized void updateWork() throws RemoteException, InterruptedException {
         taskNames.remove("Next");
 
-        String key = taskNames.getFirst();
-        int[] array = tasks.get(key);
+        if (!tasks.isEmpty()){
+            String key = taskNames.getFirst();
+            int[] array = tasks.get(key);
 
-        tasks.remove(key);
-        tasks.put("Next",array);
+            tasks.remove(key);
+            tasks.put("Next",array);
 
-        if (tasks.isEmpty())
+            workerNotification(SubscriberTypes.Worker);
+        }
+        else {
             masterWorkerNotification();
-        else
-            workerNotification(SubsciberTypes.Worker);
+        }
+
     }
 
     @Override
     public Hashtable<String, int[]> returnResults() throws RemoteException {
         return tasks;
+    }
+
+    public static void createServer() {
+        try {
+            TaskBagImplementation taskBag = new TaskBagImplementation();
+            LocateRegistry.createRegistry(1899);
+            Naming.bind("rmi://localhost:1899"+"/TB",taskBag);
+        }
+        catch (Exception e){
+            System.out.println(e);
+        }
+    }
+
+    public static void main(String [] arg){
+        System.out.println("Running the TaskBag");
+        System.out.println("-----------------------------------------------------");
+        TaskBagImplementation.createServer();
     }
 
 

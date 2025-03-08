@@ -1,17 +1,23 @@
+import java.io.Serializable;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
 import java.util.Arrays;
 import java.util.Scanner;
 
-public class MasterWorker implements Subscriber{
+public class MasterWorker extends UnicastRemoteObject implements Subscriber, Serializable {
     static TaskBag stub=null;
+
+    MasterWorker() throws RemoteException{
+        super();
+    }
 
 
     @Override
-    public void update() throws RemoteException {
+    public void update() throws RemoteException, InterruptedException {
         if (stub.returnResults().size()==1) {
             System.out.println("The max number in the array is :" + Arrays.toString(stub.returnResults().get("result")));
-            stub.unSubscribe(SubsciberTypes.MasterWorker,this);
+            stub.unSubscribe(SubscriberTypes.MasterWorker,this);
         }
         else if (stub.returnResults().size()>1){
             int count =stub.returnResults().size();
@@ -23,7 +29,7 @@ public class MasterWorker implements Subscriber{
             }
             masterCore(resultsArray,this);
         }
-        stub.workerNotification(SubsciberTypes.Worker);
+        stub.workerNotification(SubscriberTypes.Worker);
     }
 
     public static void createStub()  {
@@ -79,24 +85,24 @@ public class MasterWorker implements Subscriber{
         else {
             for(int i =0; i<numberOfSubArrays; i+=1){
                 if (i==0)
-                    addWork("Next", masterWorker.sliceArray(array,0,array.length) );
+                    addWork("Next", masterWorker.sliceArray(array,0,3) );
                 else if (array.length-i*3<3)
                     addWork("Task"+i, masterWorker.sliceArray(array,i*3,array.length) );
                 else
-                    addWork("Master"+i, masterWorker.sliceArray(array,i*3,(i*3)+3) );
+                    addWork("Task"+i, masterWorker.sliceArray(array,i*3,(i*3)+3) );
             }
         }
+        stub.newTasks();
     }
 
-    public static void main (String[] arg) throws RemoteException {
+    public static void main (String[] arg) throws RemoteException, InterruptedException {
         MasterWorker.createStub();
         MasterWorker masterWorker = new MasterWorker();
 
-        stub.subscribe(SubsciberTypes.MasterWorker,masterWorker);
+        stub.subscribe(SubscriberTypes.MasterWorker,masterWorker);
 
         int[] array = masterWorker.getArray();
         masterWorker.masterCore(array,masterWorker);
-        stub.workerNotification(SubsciberTypes.Worker);
     }
 
 }

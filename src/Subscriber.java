@@ -1,5 +1,6 @@
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 
-public interface Subscriber {
-    void update() throws RemoteException;
+public interface Subscriber extends Remote {
+    void update() throws RemoteException, InterruptedException;
 }
