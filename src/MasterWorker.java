@@ -14,25 +14,27 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
 
 
     @Override
-    public void update() throws RemoteException, InterruptedException {
+    public  void update() throws RemoteException, InterruptedException {
+        System.out.println("Workers Finished the previous tasks. Getting results or adding new tasks.\n");
+
         if (stub.returnResults().size()==1) {
-            System.out.println("The max number in the array is :" + Arrays.toString(stub.returnResults().get("result")));
+            System.out.println("The max number in the array is " + stub.returnResults().getFirst());
             stub.unSubscribe(SubscriberTypes.MasterWorker,this);
         }
         else if (stub.returnResults().size()>1){
             int count =stub.returnResults().size();
-            Object[] object= stub.returnResults().values().toArray();
+            Object[] object= stub.returnResults().toArray();
             int[] resultsArray =new int[count];
 
             for (int i=0;i<count;i++){
                 resultsArray[i]= (int) object[i];
             }
+            System.out.println("New Array is ---> "+ Arrays.toString(resultsArray)+"\n");
             masterCore(resultsArray,this);
         }
-        stub.workerNotification(SubscriberTypes.Worker);
     }
 
-    public static void createStub()  {
+    public  static void createStub()  {
         try {
             stub = (TaskBag) Naming.lookup("rmi://localhost:1899"+"/TB");
         }catch (Exception e){
@@ -40,7 +42,7 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
         }
     }
 
-    public static void addWork(String key,int[] arraySlice){
+    public  static void addWork(String key,int[] arraySlice){
         if (stub==null){
             System.out.println("The stub was never initialized");
         }
@@ -73,7 +75,7 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
         return Arrays.copyOfRange(arr,start,end);
     }
 
-    public void masterCore(int[] array, MasterWorker masterWorker) throws RemoteException {
+    public  void masterCore(int[] array, MasterWorker masterWorker) throws RemoteException {
         int numberOfSubArrays;
 
         if(array.length%3==0)
@@ -95,7 +97,8 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
         stub.newTasks();
     }
 
-    public static void main (String[] arg) throws RemoteException, InterruptedException {
+    public  static void main (String[] arg) throws RemoteException, InterruptedException {
+        System.out.println("---------------------------Running the MasterWorker---------------------------");
         MasterWorker.createStub();
         MasterWorker masterWorker = new MasterWorker();
 

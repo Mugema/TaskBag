@@ -15,34 +15,38 @@ public class TaskBagImplementation extends UnicastRemoteObject
         subscribers.put(SubscriberTypes.MasterWorker,new ArrayList<>());
     }
     List<String> taskNames;
+    ArrayList<Integer> results= new ArrayList<>();
 
 
     @Override
     public int subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
         subscribers.get(type).add(sub);
-        System.out.println("Adding Subscriber: "+sub.toString());
-        if(type== SubscriberTypes.Worker)
-            return subscribers.get(SubscriberTypes.Worker).size()-1;
+        System.out.println("Adding " + type + " Subscriber");
+        if(type== SubscriberTypes.Worker) {
+            try {
+                workerNotification(SubscriberTypes.Worker);
+            } catch (InterruptedException ignored) { }
+            return subscribers.get(SubscriberTypes.Worker).size() - 1;
+        }
         else
             return 0;
     }
 
     @Override
     public void unSubscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
-        System.out.println("Removing Subscriber: "+ sub);
+        System.out.println("Removing "+ type + " Subscriber");
         subscribers.get(type).remove(sub);
     }
 
     @Override
     public void workerNotification(SubscriberTypes workerType) throws RemoteException, InterruptedException {
-        while (subscribers.get(workerType).isEmpty())
+        while (subscribers.get(workerType).isEmpty() || tasks.isEmpty())
         {
-            Thread.sleep(2000L);
+            Thread.sleep(500L);
         }
         List<Subscriber> subscriberList = subscribers.get(workerType);
 
         try{
-            System.out.println(subscriberList);
             subscriberList.getFirst().update();
         } catch (RemoteException e) {
             subscribers.get(SubscriberTypes.Worker).remove(subscriberList.getFirst());
@@ -52,29 +56,42 @@ public class TaskBagImplementation extends UnicastRemoteObject
 
     @Override
     public void masterWorkerNotification() throws RemoteException, InterruptedException {
-        subscribers.get(SubscriberTypes.MasterWorker).getFirst().update();
+        new Thread(()->{
+            try {
+                subscribers.get(SubscriberTypes.MasterWorker).getFirst().update();
+            } catch (RemoteException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }).start();
     }
 
     @Override
     public void newTasks() throws RemoteException {
         taskNames = new ArrayList<>(List.copyOf(tasks.keySet()));
-        System.out.println("The size of the taskBag is"+tasks.size());
-        System.out.println("The sliced arrays are:"+ Arrays.toString(tasks.values().toArray()));
-        System.out.println("The taskNames are:"+tasks.keys());
+        System.out.println("The taskNames are : "+taskNames);
+        System.out.println("The tasks are : "+tasks);
+        try {
+            results=new ArrayList<>();
+            workerNotification(SubscriberTypes.Worker);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public synchronized void pairOut(String key, int[] array) throws RemoteException {
+    public synchronized  void pairOut(String key, int[] array) throws RemoteException {
         tasks.put(key,array);
     }
 
     @Override
-    public synchronized void addToResults(String key, int value) throws RemoteException {
-        results.put(key,value);
+    public synchronized  void addToResults(int value) throws RemoteException {
+        if(results.add(value)) System.out.println("Added " +value+" to the results");
+        else System.out.println(value);
+        System.out.println("Results list: "+results+"\n");
     }
 
     @Override
-    public synchronized int[] pairIn() {
+     public synchronized  int[] pairIn() {
         if (tasks.get("Next") == null){
             return null;
         }
@@ -86,32 +103,46 @@ public class TaskBagImplementation extends UnicastRemoteObject
     }
 
     @Override
-    public synchronized int[] readPair(String key) {
+    public synchronized  int[] readPair(String key) {
         return tasks.get(key);
     }
 
     @Override
-    public synchronized void updateWork() throws RemoteException, InterruptedException {
-        taskNames.remove("Next");
+    public  void updateWork() throws RemoteException {
+        if (taskNames.isEmpty()) return;
+        else taskNames.removeFirst();
+        new Thread(() -> {
+            if (tasks.isEmpty()){
+                try {
+                    masterWorkerNotification();
+                } catch (RemoteException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            else {
+                String key = taskNames.getFirst();
+                int[] array = tasks.get(key);
 
-        if (!tasks.isEmpty()){
-            String key = taskNames.getFirst();
-            int[] array = tasks.get(key);
+                tasks.remove(key);
+                tasks.put("Next",array);
 
-            tasks.remove(key);
-            tasks.put("Next",array);
-
-            workerNotification(SubscriberTypes.Worker);
-        }
-        else {
-            masterWorkerNotification();
-        }
-
+                try {
+                    workerNotification(SubscriberTypes.Worker);
+                } catch (RemoteException | InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }).start();
     }
 
     @Override
-    public Hashtable<String, int[]> returnResults() throws RemoteException {
-        return tasks;
+    public int returnNumberOfTasks() throws RemoteException {
+        return tasks.size();
+    }
+
+    @Override
+    public ArrayList<Integer> returnResults() throws RemoteException {
+        return results;
     }
 
     public static void createServer() {
@@ -120,14 +151,12 @@ public class TaskBagImplementation extends UnicastRemoteObject
             LocateRegistry.createRegistry(1899);
             Naming.bind("rmi://localhost:1899"+"/TB",taskBag);
         }
-        catch (Exception e){
-            System.out.println(e);
+        catch (Exception ignored){
         }
     }
 
     public static void main(String [] arg){
-        System.out.println("Running the TaskBag");
-        System.out.println("-----------------------------------------------------");
+        System.out.println("---------------------------Running the TaskBag---------------------------");
         TaskBagImplementation.createServer();
     }
 

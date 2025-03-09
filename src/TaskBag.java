@@ -1,19 +1,16 @@
 import java.rmi.*;
 import java.util.ArrayList;
 import java.util.Hashtable;
-import java.util.List;
 
 public interface TaskBag extends Remote {
 
     Hashtable<String,int[]> tasks = new Hashtable<>();
-    Hashtable<String, Integer> results = new Hashtable<>();
-
 
     /**causes a Pair (key, value) to be added to the Task Bag. The client
       process continues immediately */
     void pairOut(String key, int[] array) throws RemoteException;
 
-    void addToResults(String key, int value) throws RemoteException;
+    void addToResults( int value) throws RemoteException;
 
     /**
      * causes some Pair in the Task Bag that matches key to be withdrawn
@@ -47,7 +44,9 @@ public interface TaskBag extends Remote {
 
     void newTasks() throws RemoteException;
 
-    Hashtable<String, int[]> returnResults() throws RemoteException;
+    int returnNumberOfTasks() throws RemoteException;
+
+    ArrayList<Integer> returnResults() throws RemoteException;
 
 
 }

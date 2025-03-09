@@ -11,6 +11,7 @@ public class Worker extends UnicastRemoteObject implements Subscriber, Serializa
 
     Worker() throws RemoteException {
         super();
+        System.out.println("---------------------------Running Worker---------------------------");
         createStub();
         getWorkerName();
 
@@ -41,31 +42,27 @@ public class Worker extends UnicastRemoteObject implements Subscriber, Serializa
         System.out.println("Doing Work:"+ Arrays.toString(array));
 
         stub.updateWork();
-        System.out.println(Arrays.toString(array));
         int max =  maxNumberInArray(array);
+        System.out.println("maxNumber in "+ Arrays.toString(array) +" is "+max);
 
         try {
-            stub.addToResults(workerName,max);
-        } catch (java.rmi.RemoteException e) {
+            stub.addToResults(max);
+        } catch (Exception e) {
             System.out.println("Error---" +e );
         }
-        System.out.println("maxNumber is:"+max);
-
     }
 
     @Override
-    public synchronized void  update() throws RemoteException, InterruptedException {
+    public  void  update() throws RemoteException, InterruptedException {
         stub.unSubscribe(SubscriberTypes.Worker,this);
         doWork();
+        Thread.sleep(2000L);
         stub.subscribe(SubscriberTypes.Worker,this);
     }
 
 
-    public static void main( String [] arg) throws RemoteException, InterruptedException {
+    public static void main( String [] arg) throws RemoteException{
         Worker worker= new Worker();
-
-        System.out.println("Running Worker:"+worker.workerName);
-
     }
 
 }
