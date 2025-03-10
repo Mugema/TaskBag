@@ -24,11 +24,6 @@ public class Worker extends UnicastRemoteObject implements Subscriber, Serializa
         }
     }
 
-    public void getWorkerName() throws RemoteException {
-        int workerNumber = stub.subscribe(SubscriberTypes.Worker,this);
-        workerName="Worker"+workerNumber;
-    }
-
     public static int maxNumberInArray(int [] array){
         int max =0;
         for (Integer integer : array) {
