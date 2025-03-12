@@ -8,6 +8,7 @@ public class TaskBagImplementation extends UnicastRemoteObject
         implements TaskBag
 {
     Hashtable<SubscriberTypes,List<Subscriber>> subscribers = new Hashtable<>(){};
+    int numberOfResults;
 
     TaskBagImplementation() throws RemoteException {
         super();
@@ -19,22 +20,19 @@ public class TaskBagImplementation extends UnicastRemoteObject
 
 
     @Override
-    public int subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
-        subscribers.get(type).add(sub);
-        System.out.println("Adding " + type + " Subscriber");
+    public void subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
+        subscribers.get(type).addLast(sub);
+        System.out.println("Adding " + type + " Subscriber.\n");
         if(type== SubscriberTypes.Worker) {
             try {
                 workerNotification(SubscriberTypes.Worker);
             } catch (InterruptedException ignored) { }
-            return subscribers.get(SubscriberTypes.Worker).size() - 1;
         }
-        else
-            return 0;
     }
 
     @Override
     public void unSubscribe(SubscriberTypes type, Subscriber sub) throws RemoteException {
-        System.out.println("Removing "+ type + " Subscriber");
+        System.out.println("Removing "+ type + " Subscriber.\n");
         subscribers.get(type).remove(sub);
     }
 
@@ -67,9 +65,11 @@ public class TaskBagImplementation extends UnicastRemoteObject
 
     @Override
     public void newTasks() throws RemoteException {
+        numberOfResults = tasks.size();
         taskNames = new ArrayList<>(List.copyOf(tasks.keySet()));
-        System.out.println("The taskNames are : "+taskNames);
-        System.out.println("The tasks are : "+tasks);
+        taskNames.remove("Next");
+
+        System.out.println("New tasks added to the Bag are "+tasks+"\n");
         try {
             results=new ArrayList<>();
             workerNotification(SubscriberTypes.Worker);
@@ -85,7 +85,14 @@ public class TaskBagImplementation extends UnicastRemoteObject
 
     @Override
     public synchronized  void addToResults(int value) throws RemoteException {
-        if(results.add(value)) System.out.println("Added " +value+" to the results");
+        if(results.add(value)) System.out.println("Added " +value+" to the results.\n");
+        if (results.size()==numberOfResults) {
+            try {
+                masterWorkerNotification();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
         else System.out.println(value);
         System.out.println("Results list: "+results+"\n");
     }
@@ -108,36 +115,25 @@ public class TaskBagImplementation extends UnicastRemoteObject
     }
 
     @Override
-    public  void updateWork() throws RemoteException {
-        if (taskNames.isEmpty()) return;
-        else taskNames.removeFirst();
+    public  synchronized void updateWork() throws RemoteException {
         new Thread(() -> {
-            if (tasks.isEmpty()){
-                try {
-                    masterWorkerNotification();
-                } catch (RemoteException | InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            else {
-                String key = taskNames.getFirst();
-                int[] array = tasks.get(key);
+            if (!tasks.isEmpty()) {
+                if(!taskNames.isEmpty()) {
+                    String key = taskNames.getFirst();
+                    taskNames.removeFirst();
+                    int[] array = tasks.get(key);
 
-                tasks.remove(key);
-                tasks.put("Next",array);
+                    tasks.remove(key);
+                    tasks.put("Next",array);
 
-                try {
-                    workerNotification(SubscriberTypes.Worker);
-                } catch (RemoteException | InterruptedException e) {
-                    throw new RuntimeException(e);
+                    try {
+                        workerNotification(SubscriberTypes.Worker);
+                    } catch (RemoteException | InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         }).start();
-    }
-
-    @Override
-    public int returnNumberOfTasks() throws RemoteException {
-        return tasks.size();
     }
 
     @Override

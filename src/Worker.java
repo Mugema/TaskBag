@@ -6,15 +6,13 @@ import java.util.Arrays;
 
 public class Worker extends UnicastRemoteObject implements Subscriber, Serializable {
     static TaskBag stub;
-    String workerName;
 
 
     Worker() throws RemoteException {
         super();
         System.out.println("---------------------------Running Worker---------------------------");
         createStub();
-        getWorkerName();
-
+        stub.subscribe(SubscriberTypes.Worker,this);
     }
     public static void createStub(){
         try {
@@ -34,16 +32,19 @@ public class Worker extends UnicastRemoteObject implements Subscriber, Serializa
 
     public void doWork() throws RemoteException, InterruptedException {
         int[] array=stub.pairIn();
-        System.out.println("Doing Work:"+ Arrays.toString(array));
 
-        stub.updateWork();
-        int max =  maxNumberInArray(array);
-        System.out.println("maxNumber in "+ Arrays.toString(array) +" is "+max);
+        if(array!=null) {
+            System.out.println("Doing Work:"+ Arrays.toString(array));
+            stub.updateWork();
 
-        try {
-            stub.addToResults(max);
-        } catch (Exception e) {
-            System.out.println("Error---" +e );
+            int max =  maxNumberInArray(array);
+            System.out.println("maxNumber in "+ Arrays.toString(array) +" is "+max);
+
+            try {
+                stub.addToResults(max);
+            } catch (Exception e) {
+                System.out.println("Error---" +e );
+            }
         }
     }
 

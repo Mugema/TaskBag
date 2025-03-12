@@ -31,7 +31,7 @@ public interface TaskBag extends Remote {
      * */
     void updateWork() throws RemoteException, InterruptedException;
 
-    int subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException;
+    void subscribe(SubscriberTypes type, Subscriber sub) throws RemoteException;
 
     void unSubscribe(SubscriberTypes type, Subscriber sub) throws RemoteException;
 
@@ -44,7 +44,6 @@ public interface TaskBag extends Remote {
 
     void newTasks() throws RemoteException;
 
-    int returnNumberOfTasks() throws RemoteException;
 
     ArrayList<Integer> returnResults() throws RemoteException;
 

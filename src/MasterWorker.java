@@ -14,12 +14,13 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
 
 
     @Override
-    public  void update() throws RemoteException, InterruptedException {
+    public  void update() throws RemoteException{
         System.out.println("Workers Finished the previous tasks. Getting results or adding new tasks.\n");
 
         if (stub.returnResults().size()==1) {
             System.out.println("The max number in the array is " + stub.returnResults().getFirst());
             stub.unSubscribe(SubscriberTypes.MasterWorker,this);
+            System.out.println("___________________END___________________");
         }
         else if (stub.returnResults().size()>1){
             int count =stub.returnResults().size();
@@ -97,7 +98,7 @@ public class MasterWorker extends UnicastRemoteObject implements Subscriber, Ser
         stub.newTasks();
     }
 
-    public  static void main (String[] arg) throws RemoteException, InterruptedException {
+    public  static void main (String[] arg) throws RemoteException{
         System.out.println("---------------------------Running the MasterWorker---------------------------");
         MasterWorker.createStub();
         MasterWorker masterWorker = new MasterWorker();
