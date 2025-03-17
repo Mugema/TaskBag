@@ -1,0 +1,21 @@
+import java.rmi.server.RMISocketFactory;
+import java.net.Socket;
+import java.net.ServerSocket;
+import java.io.IOException;
+
+public class TimeoutSocketFactory extends RMISocketFactory {
+    private static final int TIMEOUT = 5000; // 5 seconds
+
+    @Override
+    public Socket createSocket(String host, int port) throws IOException {
+        Socket socket = new Socket();
+        socket.setSoTimeout(TIMEOUT); // Set timeout for read operations
+        socket.connect(new java.net.InetSocketAddress(host, port), TIMEOUT); // Set connection timeout
+        return socket;
+    }
+
+    @Override
+    public ServerSocket createServerSocket(int port) throws IOException {
+        return new ServerSocket(port);
+    }
+}
