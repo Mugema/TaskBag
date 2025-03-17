@@ -4,6 +4,15 @@ import java.util.Arrays;
 import java.util.Scanner;
 
 public class MasterWorker {
+
+    static {
+        try {
+            RMISocketFactory.setSocketFactory(new TimeoutSocketFactory());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
     static TaskBag stub=null;
     String[] taskNames;
 
